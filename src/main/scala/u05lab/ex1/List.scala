@@ -59,16 +59,32 @@ enum List[A]:
   def reverse(): List[A] = foldLeft[List[A]](Nil())((l, e) => e :: l)
 
   /** EXERCISES */
-  def zipRight: List[(A, Int)] = ???
+  def zipRight: List[(A, Int)] =
+    foldRight(Nil())((a, s) => s match
+      case (_, i) :: _ => (a, i - 1) :: s
+      case Nil() => (a, this.length - 1) :: s
+    )
 
-  def partition(pred: A => Boolean): (List[A], List[A]) = ???
+  def partition(pred: A => Boolean): (List[A], List[A]) =
+    (filter(pred(_)), filter(!pred(_)))
 
-  def span(pred: A => Boolean): (List[A], List[A]) = ???
+  def span(pred: A => Boolean): (List[A], List[A]) = this match
+    case h :: t if pred(h) => (h :: t.span(pred)._1, t.span(pred)._2)
+    case h :: t => (Nil(), h :: t)
+    case _ => (Nil(), Nil())
 
   /** @throws UnsupportedOperationException if the list is empty */
-  def reduce(op: (A, A) => A): A = ???
+  def reduce(op: (A, A) => A): A = this match
+    case Nil() => throw new UnsupportedOperationException()
+    case h :: Nil() => h
+    case h :: t => op(h, t.reduce(op))
 
-  def takeRight(n: Int): List[A] = ???
+  def takeRight(n: Int): List[A] = this match
+    case _ :: t if this.length > n => t.takeRight(n)
+    case _ => this
+
+  def collect[B](pf: PartialFunction[A, B]): List[B] =
+    foldRight(Nil())((e, list) => if pf.isDefinedAt(e) then pf(e) :: list else list)
 
 // Factories
 object List:
@@ -84,11 +100,17 @@ object List:
 @main def checkBehaviour(): Unit =
   val reference = List(1, 2, 3, 4)
   println(reference.zipRight) // List((1, 0), (2, 1), (3, 2), (4, 3))
+
   println(reference.partition(_ % 2 == 0)) // (List(2, 4), List(1, 3))
+
   println(reference.span(_ % 2 != 0)) // (List(1), List(2, 3, 4))
   println(reference.span(_ < 3)) // (List(1, 2), List(3, 4))
+
   println(reference.reduce(_ + _)) // 10
   try Nil.reduce[Int](_ + _)
   catch case ex: Exception => println(ex) // prints exception
   println(List(10).reduce(_ + _)) // 10
+
   println(reference.takeRight(3)) // List(2, 3, 4)
+
+  println (reference collect { case i if i > 2 => i + 10}) // List (13, 14)
