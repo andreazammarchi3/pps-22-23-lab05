@@ -68,23 +68,25 @@ enum List[A]:
   def partition(pred: A => Boolean): (List[A], List[A]) =
     (filter(pred(_)), filter(!pred(_)))
 
-  def span(pred: A => Boolean): (List[A], List[A]) = this match
-    case h :: t if pred(h) => (h :: t.span(pred)._1, t.span(pred)._2)
-    case h :: t => (Nil(), h :: t)
-    case _ => (Nil(), Nil())
+  def span(pred: A => Boolean): (List[A], List[A]) =
+    foldLeft((Nil(), Nil()))((lists, e) => lists match
+      case (list1, list2) if pred(e) && list2.isEmpty => (list1 append List(e), list2)
+      case (list1, list2) => (list1, list2 append List(e))
+    )
 
   /** @throws UnsupportedOperationException if the list is empty */
   def reduce(op: (A, A) => A): A = this match
     case Nil() => throw new UnsupportedOperationException()
-    case h :: Nil() => h
-    case h :: t => op(h, t.reduce(op))
+    case h :: t => t.foldLeft(h)(op)
 
-  def takeRight(n: Int): List[A] = this match
-    case _ :: t if this.length > n => t.takeRight(n)
-    case _ => this
+  def takeRight(n: Int): List[A] =
+    foldRight(Nil())((e, list) => list match
+      case _ if list.length < n => e :: list
+      case _ => list
+  )
 
   def collect[B](pf: PartialFunction[A, B]): List[B] =
-    foldRight(Nil())((e, list) => if pf.isDefinedAt(e) then pf(e) :: list else list)
+    filter(pf.isDefinedAt).map(pf)
 
 // Factories
 object List:
